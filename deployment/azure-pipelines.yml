@@ -33,7 +33,7 @@ stages:
         displayName: "Restore packages"
         inputs:
           command: "restore"
-          projects: "$(System.DefaultWorkingDirectory)/src/BlueGreenApp/BlueGreenApp.csproj"
+          projects: "$(System.DefaultWorkingDirectory)/src/BlueGreenApplication/BlueGreenApplication.csproj"
           feedsToUse: "select"
           vstsFeed: 'c129c932-85f3-4e4a-89d8-da2d9088c30f'
 
@@ -41,7 +41,7 @@ stages:
         displayName: Build $(buildConfiguration)
         inputs:
           command: "build"
-          projects: $(System.DefaultWorkingDirectory)/src/BlueGreenApp/*.csproj
+          projects: $(System.DefaultWorkingDirectory)/src/BlueGreenApplication/*.csproj
           arguments: --output $(System.DefaultWorkingDirectory)/build_output --configuration $(buildConfiguration) --no-restore
        
       - task: DotNetCoreCLI@2
@@ -49,7 +49,7 @@ stages:
         inputs:
           command: publish
           publishWebProjects: false # Important, if ture all web project will be published and the project flter will be ignored
-          projects: $(System.DefaultWorkingDirectory)/src/BlueGreenApp/*.csproj
+          projects: $(System.DefaultWorkingDirectory)/src/BlueGreenApplication/*.csproj
           arguments: --output $(System.DefaultWorkingDirectory)/publish_output --configuration $(buildConfiguration) --no-restore
           zipAfterPublish: false
           modifyOutputPath: false
