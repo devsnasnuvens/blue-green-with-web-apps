@@ -1,0 +1,10 @@
+location="brazilsouth"
+rgName="bg"
+planName="bgplan"
+webAppName="bgapp"
+slotName="stage"
+
+az group create --location $location --name $rgName
+az appservice plan create --name $planName --resource-group $rgName --location $location --sku "S1"
+az webapp create --name $webAppName --plan $planName --resource-group $rgName --runtime "dotnet:8"
+az webapp deployment slot create --name $webAppName --resource-group $rgName --slot $slotName
