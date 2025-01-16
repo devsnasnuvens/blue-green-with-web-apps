@@ -1,0 +1,86 @@
+trigger:
+- main
+
+variables:
+  - group : BlueGreenDeployment
+
+  - name: vmImageName
+    value: 'windows-latest'
+  - name: buildConfiguration
+    value: 'Release'
+ 
+stages:
+
+  - stage: Build
+    pool:
+      vmImage: $(vmImageName)
+
+    jobs:
+    - job: BuildAndPublish
+      displayName: Build and Publish
+      pool:
+        vmImage: $(vmImageName)
+
+      steps:
+      - task: UseDotNet@2
+        displayName: 'Use .NET 8 Core sdk'
+        inputs:
+          packageType: 'sdk'
+          version: '8.0.x'
+          includePreviewVersions: false
+
+      - task: DotNetCoreCLI@2
+        displayName: "Restore packages"
+        inputs:
+          command: "restore"
+          projects: "$(System.DefaultWorkingDirectory)/src/BlueGreenApp/BlueGreenApp.csproj"
+          feedsToUse: "select"
+          vstsFeed: 'c129c932-85f3-4e4a-89d8-da2d9088c30f'
+
+      - task: DotNetCoreCLI@2
+        displayName: Build $(buildConfiguration)
+        inputs:
+          command: "build"
+          projects: $(System.DefaultWorkingDirectory)/src/BlueGreenApp/*.csproj
+          arguments: --output $(System.DefaultWorkingDirectory)/build_output --configuration $(buildConfiguration) --no-restore
+       
+      - task: DotNetCoreCLI@2
+        displayName: Publish $(buildConfiguration)
+        inputs:
+          command: publish
+          publishWebProjects: false # Important, if ture all web project will be published and the project flter will be ignored
+          projects: $(System.DefaultWorkingDirectory)/src/BlueGreenApp/*.csproj
+          arguments: --output $(System.DefaultWorkingDirectory)/publish_output --configuration $(buildConfiguration) --no-restore
+          zipAfterPublish: false
+          modifyOutputPath: false
+ 
+      - task: ArchiveFiles@2
+        displayName: 'Zip build files'
+        inputs:
+          rootFolderOrFile: '$(System.DefaultWorkingDirectory)/publish_output'
+          includeRootFolder: false
+          archiveType: zip
+          archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+          replaceExistingArchive: true
+ 
+      - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+        displayName: 'Publish build artifacts'
+        artifact: drop 
+
+      - task: bash@3
+        displayName: Login in with Azure
+        inputs:
+          targetType: inline
+          script: |
+            az login --service-principal -u $(AZURE_USER) -p $(AZURE_SECRET) --tenant $(AZURE_TENANT_ID)
+            az account set --subscription $(AZURE_SUBSCRIPTION)
+
+      - task: bash@3
+        displayName: Deploy to Azure App Service
+        inputs:
+          targetType: inline
+          script: |
+            az webapp deployment source config-zip \
+            -g $(RESOURCE_GROUP) \
+            -n $(WEBAPP_NAME) \
+            --src '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
