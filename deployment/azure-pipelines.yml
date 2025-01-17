@@ -80,7 +80,16 @@ stages:
         inputs:
           targetType: inline
           script: |
-            az webapp deployment source config-zip \
-            -g $(RESOURCE_GROUP) \
-            -n $(WEBAPP_NAME) \
-            --src '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+            az webapp deploy \
+            --resource-group $(RESOURCE_GROUP) \
+            --name $(WEBAPP_NAME) \
+            --slot $(SLOT_NAME) \
+            --type zip \
+            --src-path '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      
+      - task: bash@3
+        displayName: Swap App Service Slots
+        inputs:
+          targetType: inline
+          script: |
+            az webapp deployment slot swap --slot $(SLOT_NAME) --resource-group $(RESOURCE_GROUP) --name $(WEBAPP_NAME)
